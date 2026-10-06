@@ -2,6 +2,8 @@ from transformers import AutoTokenizer
 import numpy as np
 import matplotlib.pyplot as plt
 
+np.random.seed(42)
+
 # Tokenization
 
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
@@ -59,51 +61,56 @@ final_embeddings = token_embeddings + positional_encoding
 
 print("Final Embeddings Shape: ", final_embeddings.shape)
 
-# Query, Key, Value
+# multi-head attention
 
-W_Q = np.random.randn(embedding_dim, embedding_dim)
-W_K = np.random.randn(embedding_dim, embedding_dim)
-W_V = np.random.randn(embedding_dim, embedding_dim)
+num_heads = 2
+head_dim = embedding_dim // num_heads
 
-Q = final_embeddings @ W_Q
-K = final_embeddings @ W_K
-V = final_embeddings @ W_V
-
-print("Q shape: ", Q.shape)
-print("K shape: ", K.shape)
-print("V shape: ", V.shape)
-
-# Attention scores
-
-scores = Q @ K.T
-
-print("Scores shape: ",scores.shape)
-print(scores)
-
-# Scaling attention scores
-
-d_k = embedding_dim
-
-scaled_scores = scores / np.sqrt(d_k)
-
-print(scaled_scores)
+heads = []
 
 # softmax
 
 def softmax(x):
+    x = x - np.max(x, axis=1, keepdims=True)
     exp_x = np.exp(x)
-    return exp_x / np.sum(exp_x)
+    return exp_x / np.sum(exp_x, axis=1, keepdims=True)
 
-# Attention weights
+for head in range(num_heads):
 
-attention_weights = softmax(scaled_scores)
+    # Query, Key, Value
 
-print("Attention weights shape: ",attention_weights.shape)
-print(attention_weights)
+    W_Q = np.random.randn(embedding_dim, head_dim)
+    W_K = np.random.randn(embedding_dim, head_dim)
+    W_V = np.random.randn(embedding_dim, head_dim)
 
-# Final attention output
+    Q = final_embeddings @ W_Q
+    K = final_embeddings @ W_K
+    V = final_embeddings @ W_V
 
-attention_output = attention_weights @ V
+    # Attention scores
 
-print("Attention output shape: ",attention_output.shape)
-print(attention_output)
+    scores = Q @ K.T
+
+    # Scaling attention scores
+
+    d_k = head_dim
+
+    scaled_scores = scores / np.sqrt(d_k)
+
+    # Attention weights
+
+    attention_weights = softmax(scaled_scores)
+
+    # Final attention output
+
+    attention_output = attention_weights @ V
+
+    heads.append(attention_output)
+
+# multi-head output
+
+multi_head_output = np.concatenate(heads, axis=-1)
+
+print("Multi-head output shape: ",multi_head_output.shape)
+print(multi_head_output)
+
