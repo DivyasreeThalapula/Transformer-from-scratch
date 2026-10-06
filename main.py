@@ -17,7 +17,7 @@ print("Token IDs: ",token_ids)
 # Embedding matrix
 
 vocab_size = tokenizer.vocab_size
-embedding_dim = 768
+embedding_dim = 4
 
 embedding_matrix = np.random.randn( vocab_size, embedding_dim) * 0.02
 
@@ -59,16 +59,51 @@ final_embeddings = token_embeddings + positional_encoding
 
 print("Final Embeddings Shape: ", final_embeddings.shape)
 
-# Positional encoding visualization
+# Query, Key, Value
 
-plt.figure(figsize=(12, 6))
+W_Q = np.random.randn(embedding_dim, embedding_dim)
+W_K = np.random.randn(embedding_dim, embedding_dim)
+W_V = np.random.randn(embedding_dim, embedding_dim)
 
-plt.imshow(positional_encoding, aspect="auto")
+Q = final_embeddings @ W_Q
+K = final_embeddings @ W_K
+V = final_embeddings @ W_V
 
-plt.xlabel("Embedding Dimension")
-plt.ylabel("Position")
-plt.title("Positional Encoding Pattern")
+print("Q shape: ", Q.shape)
+print("K shape: ", K.shape)
+print("V shape: ", V.shape)
 
-plt.colorbar(label="Encoding Value")
+# Attention scores
 
-plt.show()
+scores = Q @ K.T
+
+print("Scores shape: ",scores.shape)
+print(scores)
+
+# Scaling attention scores
+
+d_k = embedding_dim
+
+scaled_scores = scores / np.sqrt(d_k)
+
+print(scaled_scores)
+
+# softmax
+
+def softmax(x):
+    exp_x = np.exp(x)
+    return exp_x / np.sum(exp_x)
+
+# Attention weights
+
+attention_weights = softmax(scaled_scores)
+
+print("Attention weights shape: ",attention_weights.shape)
+print(attention_weights)
+
+# Final attention output
+
+attention_output = attention_weights @ V
+
+print("Attention output shape: ",attention_output.shape)
+print(attention_output)
