@@ -1,6 +1,5 @@
 from transformers import AutoTokenizer
 import numpy as np
-import matplotlib.pyplot as plt
 
 np.random.seed(42)
 
@@ -150,3 +149,19 @@ print("FFN output shape: ", ffn_output.shape)
 
 ffn_residual = attention_residual + ffn_output
 print("FFN residual shape: ", ffn_residual.shape)
+
+# Layer Normalization
+
+epsilon = 1e-5
+
+mean = np.mean(ffn_residual, axis=1, keepdims=True)
+variance = np.var(ffn_residual, axis=1, keepdims=True)
+
+normalized = (ffn_residual - mean ) / np.sqrt(variance + epsilon)
+
+gamma = np.ones(embedding_dim)
+beta = np.zeros(embedding_dim)
+
+layer_norm_output = gamma * normalized + beta
+
+print("Layer normalization output shape: ", layer_norm_output.shape)
