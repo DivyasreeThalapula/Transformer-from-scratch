@@ -60,108 +60,120 @@ final_embeddings = token_embeddings + positional_encoding
 
 print("Final Embeddings Shape: ", final_embeddings.shape)
 
-# multi-head attention
+def transformer_block(final_embeddings):
+    # multi-head attention
 
-num_heads = 2
-head_dim = embedding_dim // num_heads
+    num_heads = 2
+    head_dim = embedding_dim // num_heads
 
-heads = []
+    heads = []
 
-# softmax
+    # softmax
 
-def softmax(x):
-    x = x - np.max(x, axis=1, keepdims=True)
-    exp_x = np.exp(x)
-    return exp_x / np.sum(exp_x, axis=1, keepdims=True)
+    def softmax(x):
+        x = x - np.max(x, axis=1, keepdims=True)
+        exp_x = np.exp(x)
+        return exp_x / np.sum(exp_x, axis=1, keepdims=True)
 
-for head in range(num_heads):
+    for head in range(num_heads):
 
-    # Query, Key, Value
+        # Query, Key, Value
 
-    W_Q = np.random.randn(embedding_dim, head_dim)
-    W_K = np.random.randn(embedding_dim, head_dim)
-    W_V = np.random.randn(embedding_dim, head_dim)
+        W_Q = np.random.randn(embedding_dim, head_dim)
+        W_K = np.random.randn(embedding_dim, head_dim)
+        W_V = np.random.randn(embedding_dim, head_dim)
 
-    Q = final_embeddings @ W_Q
-    K = final_embeddings @ W_K
-    V = final_embeddings @ W_V
+        Q = final_embeddings @ W_Q
+        K = final_embeddings @ W_K
+        V = final_embeddings @ W_V
 
-    # Attention scores
+        # Attention scores
 
-    scores = Q @ K.T
+        scores = Q @ K.T
 
-    # Scaling attention scores
+        # Scaling attention scores
 
-    d_k = head_dim
+        d_k = head_dim
 
-    scaled_scores = scores / np.sqrt(d_k)
+        scaled_scores = scores / np.sqrt(d_k)
 
-    # Attention weights
+        # Attention weights
 
-    attention_weights = softmax(scaled_scores)
+        attention_weights = softmax(scaled_scores)
 
-    # Final attention output
+        # Final attention output
 
-    attention_output = attention_weights @ V
+        attention_output = attention_weights @ V
 
-    heads.append(attention_output)
+        heads.append(attention_output)
 
-# multi-head output
+    # multi-head output
 
-multi_head_output = np.concatenate(heads, axis=-1)
+    multi_head_output = np.concatenate(heads, axis=-1)
 
-print("Multi-head output shape: ",multi_head_output.shape)
-print(multi_head_output)
+    print("Multi-head output shape: ",multi_head_output.shape)
+    print(multi_head_output)
 
-# output projection
+    # output projection
 
-W_O = np.random.randn(embedding_dim, embedding_dim)
+    W_O = np.random.randn(embedding_dim, embedding_dim)
 
-projected_output = multi_head_output @ W_O
+    projected_output = multi_head_output @ W_O
 
-print("Projected Output Shape", projected_output.shape)
+    print("Projected Output Shape", projected_output.shape)
 
-# residual connection around attention
+    # residual connection around attention
 
-attention_residual = final_embeddings + projected_output
-print("Attention residual shape: ",attention_residual.shape)
+    attention_residual = final_embeddings + projected_output
+    print("Attention residual shape: ",attention_residual.shape)
 
-# Feed-forward network
+    # Feed-forward network
 
-ffn_dim = embedding_dim * 2
+    ffn_dim = embedding_dim * 2
 
-W1 = np.random.randn(embedding_dim, ffn_dim)
-b1 = np.zeros(ffn_dim)
+    W1 = np.random.randn(embedding_dim, ffn_dim)
+    b1 = np.zeros(ffn_dim)
 
-W2 = np.random.randn(ffn_dim, embedding_dim)
-b2 = np.zeros(embedding_dim)
+    W2 = np.random.randn(ffn_dim, embedding_dim)
+    b2 = np.zeros(embedding_dim)
 
-hidden = attention_residual @ W1 + b1
-print("FFN hidden shape: ", hidden.shape)
+    hidden = attention_residual @ W1 + b1
+    print("FFN hidden shape: ", hidden.shape)
 
-hidden = np.maximum(hidden,0)
-print("After ReLU shape: ", hidden.shape)
+    hidden = np.maximum(hidden,0)
+    print("After ReLU shape: ", hidden.shape)
 
-ffn_output = hidden @ W2 + b2
-print("FFN output shape: ", ffn_output.shape)
+    ffn_output = hidden @ W2 + b2
+    print("FFN output shape: ", ffn_output.shape)
 
-# residual connection around ffn
+    # residual connection around ffn
 
-ffn_residual = attention_residual + ffn_output
-print("FFN residual shape: ", ffn_residual.shape)
+    ffn_residual = attention_residual + ffn_output
+    print("FFN residual shape: ", ffn_residual.shape)
 
-# Layer Normalization
+    # Layer Normalization
 
-epsilon = 1e-5
+    epsilon = 1e-5
 
-mean = np.mean(ffn_residual, axis=1, keepdims=True)
-variance = np.var(ffn_residual, axis=1, keepdims=True)
+    mean = np.mean(ffn_residual, axis=1, keepdims=True)
+    variance = np.var(ffn_residual, axis=1, keepdims=True)
 
-normalized = (ffn_residual - mean ) / np.sqrt(variance + epsilon)
+    normalized = (ffn_residual - mean ) / np.sqrt(variance + epsilon)
 
-gamma = np.ones(embedding_dim)
-beta = np.zeros(embedding_dim)
+    gamma = np.ones(embedding_dim)
+    beta = np.zeros(embedding_dim)
 
-layer_norm_output = gamma * normalized + beta
+    layer_norm_output = gamma * normalized + beta
 
-print("Layer normalization output shape: ", layer_norm_output.shape)
+    print("Layer normalization output shape: ", layer_norm_output.shape)
+
+    return layer_norm_output
+
+num_blocks = 2
+
+output = final_embeddings
+
+for block in range(num_blocks):
+    output = transformer_block(output)
+
+print("Final output shape: ",output.shape)
