@@ -122,6 +122,11 @@ projected_output = multi_head_output @ W_O
 
 print("Projected Output Shape", projected_output.shape)
 
+# residual connection around attention
+
+attention_residual = final_embeddings + projected_output
+print("Attention residual shape: ",attention_residual.shape)
+
 # Feed-forward network
 
 ffn_dim = embedding_dim * 2
@@ -132,7 +137,7 @@ b1 = np.zeros(ffn_dim)
 W2 = np.random.randn(ffn_dim, embedding_dim)
 b2 = np.zeros(embedding_dim)
 
-hidden = projected_output @ W1 + b1
+hidden = attention_residual @ W1 + b1
 print("FFN hidden shape: ", hidden.shape)
 
 hidden = np.maximum(hidden,0)
@@ -140,3 +145,8 @@ print("After ReLU shape: ", hidden.shape)
 
 ffn_output = hidden @ W2 + b2
 print("FFN output shape: ", ffn_output.shape)
+
+# residual connection around ffn
+
+ffn_residual = attention_residual + ffn_output
+print("FFN residual shape: ", ffn_residual.shape)
