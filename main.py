@@ -97,9 +97,20 @@ def transformer_block(final_embeddings):
 
         scaled_scores = scores / np.sqrt(d_k)
 
+        # casual/masked self-attention
+
+        casual_mask = np.tril(np.ones((seq_len, seq_len)))
+
+        scaled_scores = np.where(
+            casual_mask == 1,
+            scaled_scores,
+            -1e9
+        )
+
         # Attention weights
 
         attention_weights = softmax(scaled_scores)
+        print(attention_weights)
 
         # Final attention output
 
