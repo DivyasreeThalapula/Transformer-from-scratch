@@ -60,6 +60,15 @@ final_embeddings = token_embeddings + positional_encoding
 
 print("Final Embeddings Shape: ", final_embeddings.shape)
 
+# softmax
+
+def softmax(x):
+    x = x - np.max(x, axis=1, keepdims=True)
+    exp_x = np.exp(x)
+    return exp_x / np.sum(exp_x, axis=1, keepdims=True)
+
+# reusable transformer block
+
 def transformer_block(final_embeddings):
     # multi-head attention
 
@@ -67,13 +76,6 @@ def transformer_block(final_embeddings):
     head_dim = embedding_dim // num_heads
 
     heads = []
-
-    # softmax
-
-    def softmax(x):
-        x = x - np.max(x, axis=1, keepdims=True)
-        exp_x = np.exp(x)
-        return exp_x / np.sum(exp_x, axis=1, keepdims=True)
 
     for head in range(num_heads):
 
@@ -188,3 +190,19 @@ for block in range(num_blocks):
     output = transformer_block(output)
 
 print("Final output shape: ",output.shape)
+
+# output projection to vocabulary
+
+W_vocab = np.random.randn(embedding_dim, vocab_size)
+
+logits = output @ W_vocab # raw scores before softmax
+print("logits shape: ",logits.shape)
+
+probabilities = softmax(logits)
+print("Probability shape: ", probabilities.shape)
+
+predicted_token_ids = np.argmax(probabilities, axis=1)
+print("Predicted token IDs:", predicted_token_ids)
+
+predicted_tokens = tokenizer.convert_ids_to_tokens(predicted_token_ids)
+print("Predicted tokens:", predicted_tokens)
