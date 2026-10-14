@@ -155,7 +155,8 @@ def transformer_block(final_embeddings):
 
         # casual/masked self-attention
 
-        casual_mask = np.tril(np.ones((seq_len, seq_len)))
+        current_seq_len = final_embeddings.shape[0]
+        causal_mask = np.tril(np.ones((current_seq_len, current_seq_len)))
 
         scaled_scores = np.where(
             casual_mask == 1,
