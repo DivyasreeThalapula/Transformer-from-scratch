@@ -15,6 +15,12 @@ token_ids = tokenizer.encode(text)
 print("Tokens: ",tokens)
 print("Token IDs: ",token_ids)
 
+input_ids = token_ids[:-1]
+target_ids = token_ids[1:]
+
+print("Input ids: ",input_ids)
+print("Target ids: ",target_ids)
+
 # Embedding matrix
 
 vocab_size = tokenizer.vocab_size
@@ -67,12 +73,60 @@ def softmax(x):
     exp_x = np.exp(x)
     return exp_x / np.sum(exp_x, axis=1, keepdims=True)
 
+# sequence loss function
+
+def sequence_loss(probabilities, target_ids):
+    tot_loss = 0.0
+
+    for position in range(len(target_ids)):
+
+        correct_token_ids = target_ids[position]
+
+        correct_probability = probabilities[ position, correct_token_ids]
+
+        loss = -np.log(correct_probability + 1e-9)
+        tot_loss += loss
+
+    avg_loss = tot_loss / len(target_ids)
+
+    return avg_loss
+
+num_heads = 2
+head_dim = embedding_dim // num_heads
+
+W_Qs = [
+    np.random.randn(embedding_dim, head_dim)
+    for _ in range(num_heads)
+]
+
+W_Ks = [
+    np.random.randn(embedding_dim, head_dim)
+    for _ in range(num_heads)
+]
+
+W_Vs = [
+    np.random.randn(embedding_dim, head_dim)
+    for _ in range(num_heads)
+]
+
+W_O = np.random.randn(embedding_dim, embedding_dim)
+
+ffn_dim = embedding_dim * 2
+
+W1 = np.random.randn(embedding_dim, ffn_dim)
+b1 = np.zeros(ffn_dim)
+
+W2 = np.random.randn(ffn_dim, embedding_dim)
+b2 = np.zeros(embedding_dim)
+
+gamma = np.ones(embedding_dim)
+beta = np.zeros(embedding_dim)
+
 # reusable transformer block
 
 def transformer_block(final_embeddings):
     # multi-head attention
 
-    num_heads = 2
     head_dim = embedding_dim // num_heads
 
     heads = []
@@ -81,9 +135,9 @@ def transformer_block(final_embeddings):
 
         # Query, Key, Value
 
-        W_Q = np.random.randn(embedding_dim, head_dim)
-        W_K = np.random.randn(embedding_dim, head_dim)
-        W_V = np.random.randn(embedding_dim, head_dim)
+        W_Q = W_Qs[head]
+        W_K = W_Ks[head]
+        W_V = W_Vs[head]
 
         Q = final_embeddings @ W_Q
         K = final_embeddings @ W_K
@@ -112,7 +166,6 @@ def transformer_block(final_embeddings):
         # Attention weights
 
         attention_weights = softmax(scaled_scores)
-        print(attention_weights)
 
         # Final attention output
 
@@ -124,45 +177,25 @@ def transformer_block(final_embeddings):
 
     multi_head_output = np.concatenate(heads, axis=-1)
 
-    print("Multi-head output shape: ",multi_head_output.shape)
-    print(multi_head_output)
-
     # output projection
 
-    W_O = np.random.randn(embedding_dim, embedding_dim)
-
     projected_output = multi_head_output @ W_O
-
-    print("Projected Output Shape", projected_output.shape)
 
     # residual connection around attention
 
     attention_residual = final_embeddings + projected_output
-    print("Attention residual shape: ",attention_residual.shape)
 
     # Feed-forward network
 
-    ffn_dim = embedding_dim * 2
-
-    W1 = np.random.randn(embedding_dim, ffn_dim)
-    b1 = np.zeros(ffn_dim)
-
-    W2 = np.random.randn(ffn_dim, embedding_dim)
-    b2 = np.zeros(embedding_dim)
-
     hidden = attention_residual @ W1 + b1
-    print("FFN hidden shape: ", hidden.shape)
 
     hidden = np.maximum(hidden,0)
-    print("After ReLU shape: ", hidden.shape)
 
     ffn_output = hidden @ W2 + b2
-    print("FFN output shape: ", ffn_output.shape)
 
     # residual connection around ffn
 
     ffn_residual = attention_residual + ffn_output
-    print("FFN residual shape: ", ffn_residual.shape)
 
     # Layer Normalization
 
@@ -173,12 +206,7 @@ def transformer_block(final_embeddings):
 
     normalized = (ffn_residual - mean ) / np.sqrt(variance + epsilon)
 
-    gamma = np.ones(embedding_dim)
-    beta = np.zeros(embedding_dim)
-
     layer_norm_output = gamma * normalized + beta
-
-    print("Layer normalization output shape: ", layer_norm_output.shape)
 
     return layer_norm_output
 
@@ -189,20 +217,74 @@ output = final_embeddings
 for block in range(num_blocks):
     output = transformer_block(output)
 
-print("Final output shape: ",output.shape)
-
 # output projection to vocabulary
 
 W_vocab = np.random.randn(embedding_dim, vocab_size)
 
-logits = output @ W_vocab # raw scores before softmax
-print("logits shape: ",logits.shape)
+# training output
 
-probabilities = softmax(logits)
-print("Probability shape: ", probabilities.shape)
+training_output = output[:len(target_ids)]
 
-predicted_token_ids = np.argmax(probabilities, axis=1)
+# training loop
+
+learning_rate = 0.01
+num_steps = 3000
+
+for step in range(num_steps):
+
+    # forward pass
+    logits = training_output @ W_vocab
+    probabilities = softmax(logits)
+
+    # calculate loss
+    loss = sequence_loss(probabilities, target_ids)
+
+    # calculate gradient
+    gradient_logits = probabilities.copy()
+
+    for position in range(len(target_ids)):
+        correct_token_id = target_ids[position]
+        gradient_logits[position, correct_token_id] -= 1
+
+    gradient_logits /= len(target_ids)
+
+    gradient_W_vocab = training_output.T @ gradient_logits
+
+    # update weights using gradient descent
+    W_vocab -= learning_rate * gradient_W_vocab
+
+    # training progess after every 100 steps
+    if step % 100 == 0:
+        print("Step:", step, "Loss:", loss)
+
+# loss after training
+
+final_logits = training_output @ W_vocab
+final_probabilities = softmax(final_logits)
+
+final_loss = sequence_loss(final_probabilities, target_ids)
+
+print("Final loss:", final_loss)
+
+# get predicted tokens
+
+predicted_token_ids = np.argmax(final_probabilities, axis=1)
 print("Predicted token IDs:", predicted_token_ids)
 
 predicted_tokens = tokenizer.convert_ids_to_tokens(predicted_token_ids)
 print("Predicted tokens:", predicted_tokens)
+
+# compare predictions with correct tokens
+
+correct_predictions = np.sum(
+    predicted_token_ids == target_ids
+)
+
+total_predictions = len(target_ids)
+
+print("Correct predictions:", correct_predictions)
+print("Total predictions:", total_predictions)
+
+accuracy = correct_predictions / total_predictions
+
+print("Training accuracy:", accuracy * 100, "%")
